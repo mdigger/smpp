@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
-	"strconv"
 	"sync"
 )
 
@@ -43,25 +42,25 @@ func (p SmppBindAuthErr) Error() string {
 	return string(p)
 }
 
-func NewSmppConnect(host string, port int) (s *Smpp, err error) {
+func NewSmppConnect(addr string) (s *Smpp, err error) {
 	s = &Smpp{}
-	err = s.Connect(host, port)
+	err = s.Connect(addr)
 	return
 }
 
-func (s *Smpp) Connect(host string, port int) (err error) {
-	s.conn, err = net.Dial("tcp", host+":"+strconv.Itoa(port))
+func (s *Smpp) Connect(addr string) (err error) {
+	s.conn, err = net.Dial("tcp", addr)
 	return err
 }
 
-func NewSmppConnectTLS(host string, port int, config *tls.Config) (s *Smpp, err error) {
+func NewSmppConnectTLS(addr string, config *tls.Config) (s *Smpp, err error) {
 	s = &Smpp{}
-	err = s.ConnectTLS(host, port, config)
+	err = s.ConnectTLS(addr, config)
 	return
 }
 
-func (s *Smpp) ConnectTLS(host string, port int, config *tls.Config) error {
-	conn, err := net.Dial("tcp", host+":"+strconv.Itoa(port))
+func (s *Smpp) ConnectTLS(addr string, config *tls.Config) error {
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return err
 	}
@@ -265,6 +264,6 @@ func (s *Smpp) Write(p Pdu) error {
 	return err
 }
 
-func (s *Smpp) Close() {
-	s.conn.Close()
+func (s *Smpp) Close() error {
+	return s.conn.Close()
 }

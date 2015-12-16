@@ -2,40 +2,39 @@ package smpp
 
 import (
 	"crypto/tls"
-	"log"
 	"time"
 )
 
 type Transceiver struct {
 	Smpp
-	eLTicker     *time.Ticker // Enquire Link ticker
-	eLCheckTimer *time.Timer  // Enquire Link Check timer
-	eLDuration   int          // Enquire Link Duration
-	Err          error        // Errors generated in go routines that lead to conn close
+	eLTicker     *time.Ticker  // Enquire Link ticker
+	eLCheckTimer *time.Timer   // Enquire Link Check timer
+	eLDuration   time.Duration // Enquire Link Duration
+	Err          error         // Errors generated in go routines that lead to conn close
 }
 
 // NewTransceiver creates and initializes a new Transceiver.
 // The eli parameter is for EnquireLink interval, in seconds.
-func NewTransceiver(host string, port int, eli int, bindParams Params) (*Transceiver, error) {
-	return newTransceiver(host, port, eli, bindParams, nil)
+func NewTransceiver(addr string, eli time.Duration, bindParams Params) (*Transceiver, error) {
+	return newTransceiver(addr, eli, bindParams, nil)
 }
 
 // NewTransceiver creates and initializes a new Transceiver using TLS.
 // The eli parameter is for EnquireLink interval, in seconds.
-func NewTransceiverTLS(host string, port int, eli int, bindParams Params, config *tls.Config) (*Transceiver, error) {
+func NewTransceiverTLS(addr string, eli time.Duration, bindParams Params, config *tls.Config) (*Transceiver, error) {
 	if config == nil {
 		config = &tls.Config{}
 	}
-	return newTransceiver(host, port, eli, bindParams, config)
+	return newTransceiver(addr, eli, bindParams, config)
 }
 
 // eli = EnquireLink Interval in Seconds
-func newTransceiver(host string, port int, eli int, bindParams Params, config *tls.Config) (trx *Transceiver, err error) {
+func newTransceiver(addr string, eli time.Duration, bindParams Params, config *tls.Config) (trx *Transceiver, err error) {
 	trx = &Transceiver{}
 	if config == nil {
-		err = trx.Connect(host, port)
+		err = trx.Connect(addr)
 	} else {
-		err = trx.ConnectTLS(host, port, config)
+		err = trx.ConnectTLS(addr, config)
 	}
 	if err != nil {
 		return nil, err
@@ -46,8 +45,8 @@ func newTransceiver(host string, port int, eli int, bindParams Params, config *t
 		return nil, err
 	}
 	// EnquireLinks should not be less 10seconds
-	if eli < 10 {
-		eli = 10
+	if eli < time.Second*10 {
+		eli = time.Second * 10
 	}
 	trx.eLDuration = eli
 	go trx.startEnquireLink(eli)
@@ -101,7 +100,6 @@ func (t *Transceiver) Unbind() error {
 }
 
 func (t *Transceiver) UnbindResp(seq uint32) error {
-	log.Println("UnbindResp", seq)
 	p, _ := t.Smpp.UnbindResp(seq)
 	if err := t.Write(p); err != nil {
 		return err
@@ -125,10 +123,10 @@ func (t *Transceiver) bindCheck() {
 	}
 }
 
-func (t *Transceiver) startEnquireLink(eli int) {
-	t.eLTicker = time.NewTicker(time.Duration(eli) * time.Second)
+func (t *Transceiver) startEnquireLink(eli time.Duration) {
+	t.eLTicker = time.NewTicker(eli)
 	// check delay is half the time of enquire link intervel
-	d := time.Duration(eli/2) * time.Second
+	d := time.Duration(eli / 2)
 	t.eLCheckTimer = time.NewTimer(d)
 	t.eLCheckTimer.Stop()
 	for {
@@ -184,7 +182,7 @@ func (t *Transceiver) Read() (Pdu, error) {
 	return pdu, nil
 }
 
-func (t *Transceiver) Close() {
+func (t *Transceiver) Close() error {
 	// Check timers exists incase we Close() before timers are created
 	if t.eLCheckTimer != nil {
 		t.eLCheckTimer.Stop()
@@ -192,7 +190,7 @@ func (t *Transceiver) Close() {
 	if t.eLTicker != nil {
 		t.eLTicker.Stop()
 	}
-	t.Smpp.Close()
+	return t.Smpp.Close()
 }
 
 func (t *Transceiver) Write(p Pdu) error {
