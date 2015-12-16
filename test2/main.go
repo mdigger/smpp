@@ -10,9 +10,8 @@ import (
 func main() {
 	// connect and bind
 	trx, err := smpp.NewTransceiver(
-		"67.231.4.201",
-		2775,
-		10,
+		"67.231.4.201:2775",
+		time.Second*10,
 		smpp.Params{
 			"system_type": "SMPP",
 			"system_id":   "Zultys",
