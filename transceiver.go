@@ -75,7 +75,7 @@ func (t *Transceiver) Bind(system_id string, password string, params *Params) er
 	return nil
 }
 
-func (t *Transceiver) SubmitSm(source_addr, destination_addr, short_message string, params *Params) (seq uint32, err error) {
+func (t *Transceiver) SubmitSm(source_addr, destination_addr, short_message string, params Params) (seq uint32, err error) {
 	p, err := t.Smpp.SubmitSm(source_addr, destination_addr, short_message, params)
 	if err != nil {
 		return 0, err
